@@ -1,0 +1,113 @@
+// -------------------------------------------- COPYRIGHT --------------------------------------
+// Copyright 2018
+// Y Sudhakar, iitm.sudhakar@gmail.com
+// Ugis Lacis, ugis.lacis@gmail.com
+// Shervin Bagheri, shervin.bagheri@mech.kth.se
+// ----------------------------------------- LICENSE LGPLv3 ------------------------------------
+// This file is part of Porous_full_bc2ifScales.
+//
+// Porous_full_bc2ifScales is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//----------------------------------------------------------------------------------------------
+// Direct numerical solution (DNS) of flow within a lid-driven cavity, whose
+// bottom walls are covered with periodic square rough elements.
+// Such simulations are stated as "geometry-resolved simulations" in the paper.
+// Finite element method is used to discretize the governing equations.
+// Instructions on how to run the program can be found in README.md located in this folder
+//----------------------------------------------------------------------------------------------
+
+// Value of kinematic viscosity
+real epsP=1.0/100.0;
+real tolNI=1e-6;
+
+load "gmsh";
+load "iovtk";
+
+// read the mesh generated using GMSH
+mesh Th = gmshload("lid.msh");
+
+cout << "mesh loaded " <<endl;
+
+// Define FE spaces
+fespace Vh(Th,P2);	// velocity space
+fespace Ph(Th,P1);	// pressure space
+Vh u,uu,v,vv,du,dv,u0,v0;		// Pressure and velocity are from chosen from appropriate spaces to satisfy inf-sup condition
+Ph p,q;
+
+// ----------- formulate weak form and solve them--------
+// Remember the numbering of physical lines in GMSH
+// 1 === left
+// 2 === bottom
+// 3 === right
+// 4 === top
+
+problem NavierStokes (u,v,p,uu,vv,q,solver=UMFPACK) = int2d(Th)( epsP*( dx(u)*dx(uu) + dy(u)*dy(uu) + dx(v)*dx(vv) + dy(v)*dy(vv) )
+          - p*q*(0.000001)
+          - p*dx(uu) - p*dy(vv)
+          - dx(u)*q - dy(v)*q
+          + (u0*dx(u) + v0*dy(u))*uu + (u0*dx(v) + v0*dy(v))*vv )
+
++ on(1,2,3,u=0,v=0)
++ on(4,u=1.0,v=0);
+
+//problem NavierStokesN (u,v,p,uu,vv,q,solver=UMFPACK) = int2d(Th)( epsP*( dx(u)*dx(uu) + dy(u)*dy(uu) + dx(v)*dx(vv) + dy(v)*dy(vv) )
+//          - p*q*(0.000001)
+//          - p*dx(uu) - p*dy(vv)
+//          - dx(u)*q - dy(v)*q
+//          + (u0*dx(u) + v0*dy(u))*uu + (u0*dx(v) + v0*dy(v))*vv 
+//          + (u*dx(u0) + v*dy(u0))*uu + (u*dx(v0) + v*dy(v0))*vv )
+//          + int2d(Th)((u0*dx(u0) + v0*dy(u0))*uu + (u0*dx(v0) + v0*dy(v0))*vv )
+//+ on(1,2,3,u=0,v=0)
+//+ on(4,u=1.0,v=0);
+
+// Solution of the nonlinear problem
+real newerr = 10.0;
+int k=0;
+while(newerr>tolNI)
+{
+        // Set the old field
+        u0[] = u[];
+        v0[] = v[];
+        // Solve Navier-Stokes
+        NavierStokes;
+        // Get and output error
+        du[] = u[]-u0[]; dv[] = v[]-v0[]; newerr = du[].linfty/u[].linfty + dv[].linfty/v[].linfty;
+        cout << "Picard iteration " << k << " error " << newerr << endl;
+        k = k + 1;
+}
+
+//plot(Th,u,fill=true);
+
+real yif=0.02;
+real xif=0.0;
+{
+    ofstream resfile("linetrace_y"+yif+".txt");
+    for(int i=0; i<250; i++)
+    {
+        xif = 1e-6 + i*(1.0-2e-6)/(250.0-1.00);
+        resfile << xif << " "<< u(xif,yif) <<" "<< v(xif,yif) <<" "<< p(xif,yif) << endl;
+    }
+}
+
+yif=0.05;
+xif=0.0;
+{
+    ofstream resfile("linetrace_y"+yif+".txt");
+    for(int i=0; i<250; i++)
+    {
+        xif = 1e-6 + i*(1.0-2e-6)/(250.0-1.00);
+        resfile << xif << " "<< u(xif,yif) <<" "<< v(xif,yif) <<" "<< p(xif,yif) << endl;
+    }
+}
+
+// solve the equation: -Del psi = curl(u)
+// to find streamfunction values
+Vh psi,phi;
+solve streamlines(psi,phi) =
+int2d(Th)( dx(psi)*dx(phi) + dy(psi)*dy(phi))
++ int2d(Th)( -phi*(dy(u)-dx(v))) + on(1,2,3,4,psi=0);
+
+// save output in VTK format
+//savevtk("solution_lid.vtk", Th, [u,v,0],p,psi,dataname="velocity pressure streamfunction");

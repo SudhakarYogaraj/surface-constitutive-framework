@@ -1,0 +1,142 @@
+load "UMFPACK64"
+load "gmsh"
+load "msh3"
+load "iovtk"
+load "Element_P3"
+
+//------------------------------------------------------------------------------
+//------------Set the following paramters---------------------------------------
+//------------------------------------------------------------------------------
+// Mesh resolution
+int n=16;
+n = 100;
+
+// viscosity
+real epsP      = 1.0/100.0;
+real tolNI=1e-6;
+
+// convergence criterion
+string caseFix = "test";
+
+// Defining the lid velocity
+real Udrv      =  1.0;
+
+real xmin=0;
+real ymin=0.02;
+real xmax=1.0;
+real ymax=1.0;
+
+// Defining field sampling parameters
+real xslice1   = 0.02;
+real xslice2   = 0.05;
+int  Nsamp     = 250;   // Sampling rate of vertical distance unit length
+
+// constitutive parameters
+real L112=0.0217887;
+real M2121=-0.000240104;
+
+
+//------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+
+// Define geometry, top
+border sqr1t(t=ymin,ymax) {x=xmax; y=t;        label=1; }  // right 
+border sqr2t(t=xmax,xmin) {x=t;    y=ymax;     label=2; }  // top
+border sqr3t(t=ymax,ymin) {x=xmin; y=t;        label=3; }  // left
+border sqr4t(t=xmin,xmax) {x=t;    y=ymin;     label=4; }  // bottom
+
+verbosity = 0;
+
+// Define the upper part of the mesh
+mesh ThT=buildmesh( sqr1t(n*(ymax-ymin))+sqr2t(n*(xmax-xmin))+sqr3t(n*(ymax-ymin))+sqr4t(n*(xmax-xmin)) );
+
+
+plot(ThT);
+
+// Define FE spaces
+fespace UUPhT(ThT,[P3,P3,P2]);
+
+UUPhT [ut,vt,pt], [uut,vvt,ppt], [u0,v0,p0], [du,dv,dp];
+
+func ffx = 0.00;
+func ffy = 0.0; 
+
+macro strarr(v1,v2) [dx(v1), dy(v1), dx(v2), dy(v2) ] //
+macro dxarr(v1)[dx(v1), dy(v1)] //
+
+//=================================================================================
+//========================epsilon order approximation==============================
+//=================================================================================
+macro ubceps()  (L112*(dx(vt)+dy(ut)) ) //
+macro vbceps() (  M2121*(dxy(ut)+dxx(vt))) //
+
+//real gamma1=10.0,gamma2=1000000000.0;
+real gamma1=0.0,gamma2=0.0;
+problem NavierstokesEps([ut,vt,pt], [uut,vvt,ppt]) =
+         int2d(ThT)( epsP*( strarr(ut,vt)' * strarr(uut,vvt) )
+          - pt*ppt*1e-8
+          - pt*dx(uut) - pt*dy(vvt) 
+          - dx(ut)*ppt - dy(vt)*ppt 
+          + (u0*dx(ut) + v0*dy(ut))*uut + (u0*dx(vt) + v0*dy(vt))*vvt )
+          - int2d(ThT) ( uut*ffx + vvt*ffy )
+          - int1d(ThT,4)(uut*epsP*(dx(ut)*N.x + dy(ut)*N.y )+vvt*epsP*(dx(vt)*N.x + dy(vt)*N.y ) )
+          - int1d(ThT,4)(-pt*N.x*uut -pt*N.y*vvt)
+          + int1d(ThT,4)(ut*epsP*(dx(uut)*N.x + dy(uut)*N.y ) +vt*epsP*(dx(vvt)*N.x + dy(vvt)*N.y ) )
+          - int1d(ThT,4)(ubceps*epsP*(dx(uut)*N.x + dy(uut)*N.y ) )
+          - int1d(ThT,4)(vbceps*epsP*(dx(vvt)*N.x + dy(vvt)*N.y) )
+          + int1d(ThT,4)(-ppt*N.x*ut -ppt*N.y*vt)
+          - int1d(ThT,4)(-ppt*N.x*ubceps -ppt*N.y*vbceps)
+
+          +int1d(ThT,4)(gamma1*(ut*uut+vt*vvt))
+          -int1d(ThT,4)(gamma1*(ubceps*uut+vbceps*vvt))
+          +int1d(ThT,4)(gamma2*(ut*uut*N.x*N.x+vt*vvt*N.y*N.y))
+          -int1d(ThT,4)(gamma2*(ubceps*uut*N.x*N.x+vbceps*vvt*N.y*N.y))
++ on(1,3,ut=0,vt=0)
++ on(2,ut=Udrv,vt=0);
+
+
+real newerr = 10.0;
+int k=0;
+while(newerr>tolNI)
+{
+        // Set the old field
+        u0[] = ut[];
+        v0[] = vt[];
+        // Solve Navier-Stokes
+        NavierstokesEps;
+        // Get and output error
+        du[] = ut[]-u0[]; dv[] = vt[]-v0[]; newerr = du[].linfty/ut[].linfty + dv[].linfty/vt[].linfty;
+        cout << "Picard iteration " << k << " error " << newerr << endl;
+        k = k + 1;
+}
+
+plot(ut);
+plot(vt);
+
+// Sample a given slice at fixed y, output results to text file
+Nsamp=Nsamp*(xmax-xmin);
+{
+    real xsmp;
+    ofstream resfileX("eps_results_y_"+xslice1+".txt");
+    resfileX << "# y, u, v, p, sampled at y = " << xslice1 << endl;
+    for(int i=0; i<Nsamp; i++)
+    {
+        xsmp = 1e-6 + (xmax-xmin)*i/(Nsamp-1.0);
+        resfileX << xsmp << " " << ut (xsmp,xslice1) << " " << vt (xsmp,xslice1) << " " << pt (xsmp,xslice1) << endl;
+    }
+}
+Nsamp=Nsamp/(xmax-xmin);
+
+Nsamp=Nsamp*(xmax-xmin);
+{
+    real xsmp;
+    ofstream resfileX("eps_results_y_"+xslice2+".txt");
+    resfileX << "# y, u, v, p, sampled at y = " << xslice1 << endl;
+    for(int i=0; i<Nsamp; i++)
+    {
+        xsmp = 1e-6 + (xmax-xmin)*i/(Nsamp-1.0);
+        resfileX << xsmp << " " << ut (xsmp,xslice2) << " " << vt (xsmp,xslice2) << " " << pt (xsmp,xslice2) << endl;
+    }
+}
+Nsamp=Nsamp/(xmax-xmin);
+

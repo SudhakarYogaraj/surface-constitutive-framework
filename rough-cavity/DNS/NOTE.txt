@@ -1,0 +1,15 @@
+This folder contains mesh files and solver files to simulate
+geometry resolved DNS of lid-driven cavity with rough bottom
+
+Procedure to run the code involve the following steps:
+
+Step 1: Generate mesh by running the following command
+            gmsh -2 lid.geo
+        This will create a mesh file called lid.msh
+
+Step 2: Perform Navier-Stokes simulations using the following command
+             Freefem++ lid.edp
+        This will create the following files
+          solution_lid.vtk -- output file containing field solution (pressure, velocity, and stream function). This file can be opened in Paraview
+          linetrace_y0.02.txt -- Contains velocity and pressure at a plane y=0.2l which is parallel to the interface (Use to plot figure 6(c) and 6(d) in out paper)
+          linetrace_y0.05.txt -- Contains velocity and pressure at a plane y=0.5l which is parallel to the interface (Use to plot figure 7(a) and 7(b) in out paper)
