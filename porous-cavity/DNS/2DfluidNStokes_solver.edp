@@ -1,0 +1,93 @@
+verbosity=0;
+
+load "UMFPACK64"
+load "iovtk"
+
+// Mesh resolution and convergence
+int n=2;
+int nB=2;
+real tolNI = 1.0e-7;
+real tolRI = 1.0e-4;
+
+// Flow parameters, eps parameter
+real epsP  = 0.1;
+string caseFix = "svf5_eps0.100";
+
+// Definition of solid volume fraction
+real thetas = 0.05; 
+real cylr = sqrt(thetas/pi);
+real cylr1 = 0.25;
+
+// Set channel extent
+real ymax =  1.0/epsP;
+real ymin =  -5.0;
+real xmin = -0.5/epsP;
+real xmax =  0.5/epsP;
+
+// Defining the velocity boundary conditions
+real Udrv   =  100.0;
+real x2     =  0.78;
+real coefB  =  log(Udrv*1e4)/x2;
+// Define the b.c. function for sides
+func uside  = Udrv*exp((y-ymax)*coefB);
+
+// Define geometry, first channel borders
+border sqr1(t=ymin,ymax) {x=xmax; y=t;    label=1; }
+border sqr2(t=xmax,xmin) {x=t;    y=ymax; label=2; }
+border sqr3(t=ymax,ymin) {x=xmin; y=t;    label=3; }
+border sqr4(t=xmin,xmax) {x=t;    y=ymin; label=4; }
+// Finally solid circles of porous material
+include "2DfluidNStokes_solver.brddef"
+
+cout << "R of cylinder: " << cylr << endl; 
+
+// Macros for more convinient operations
+macro epsilon(v1,v2) [dx(v1),dy(v2),(dy(v1)+dx(v2))/sqrt(2)] //
+macro div(v1,v2) ( dx(v1)+dy(v2) ) //
+// Macros for boundary stress components
+macro stress11() (  -p + 2*( dx(u)       )*epsP  ) //
+macro stress12() (         ( dy(u)+dx(v) )*epsP  ) //
+macro stress22() (  -p + 2*( dy(v)       )*epsP  ) //
+macro fx(n1,n2)  (  stress11*n1 + stress12*n2 ) //
+macro fy(n1,n2)  (  stress12*n1 + stress22*n2 ) //
+
+// Generate mesh Th=buildmesh( ....
+include "2DfluidNStokes_solver.brdmsh"
+
+plot(Th,wait=true);
+
+fespace UUPh(Th,[P2,P2,P1]);
+UUPh [u,v,p], [uu,vv,pp];
+
+problem stokesK([u,v,p],[uu,vv,pp],solver=sparsesolver)
+        = int2d(Th)  ( -2*epsP*epsilon(u,v)'*epsilon(uu,vv)              // ( Dummy's comment)
+                       +p*div(uu,vv) + pp*div(u,v) - 1e-10*p*pp )
+        + on(4,5,u=0,v=0) + on(1,3,u=0,v=0) + on(2,u=Udrv,v=0);
+
+// Execute Stokes solvee
+stokesK;
+
+real Udarcy = int2d( Th )( (-1.0<=x)*(x<=0.0)*((-cylr-4.5)<=y)*(y<=(-cylr-3.5))*u     );
+real Ufreef = int2d( Th )( (y>=0.0)*u )/ymax/(xmax-xmin);
+
+cout << "Udarcy = " << Udarcy << endl;
+cout << "Ufreef = " << Ufreef << endl;
+
+// Save the obtained result (and mesh)
+savemesh(Th,"2DfluidNStokes_results_"+caseFix+".msh"); 
+{
+    ofstream resfile("2DfluidNStokes_results_"+caseFix+".dat",binary);
+    resfile<<u[];
+    resfile<<v[];
+    resfile<<p[];
+    ofstream resfile2("2DfluidNStokes_results_"+caseFix+".txt");
+    resfile2<< epsP   << endl;
+    resfile2<< 0.0    << endl;
+    resfile2<< thetas << endl;
+    resfile2<< "# epsP; dpDarc; thetas" << endl;
+}
+
+// plot(u, nbiso=40, value=true);
+// plot(v, nbiso=40, value=true, wait=true);
+
+

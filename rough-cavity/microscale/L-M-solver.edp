@@ -23,7 +23,7 @@ int Nsamp = 60;
 
 // Define location of the interface (0 = tip of the upper structure)
 // Positive values - rising the interface
-real intfShft = 0.5;
+real intfShft = 0.2;
 
 // Define geometry, top
 border sqr1t(t=intfShft,ymax) {x= 0.5; y=t;        label=1; }
@@ -190,14 +190,14 @@ real Bdn = tmpval;
 
 // Computation of M coefficient
 real M2121=0.0;
-M2121=int1d(ThB,levelset=(x-0.4999))( ub );
+M2121=-1.0*int1d(ThB,levelset=(x-0.4999))( ub );
 
-cout << "yintf = " << intfShft << endl << "L112 = " << L1BL << ", M2121= " << M2121 << endl;
+cout << "yintf = " << intfShft << endl << "Lxx = " << L1BL << ", Mzz = " << M2121 << endl;
 
 // Save the result in a txt file (yintf, L1kl, L2kl)
 {
-    ofstream resfile("2D_bound_cond_Li"+indk+indl+"_intf.txt",append);
-    resfile << intfShft << " " << L1BL << endl;
+    ofstream resfile("2D_bound_cond_L_M_intf.txt");
+    resfile << intfShft << "L112 = " << L1BL << "M2121 = " << M2121 << endl;
 }
 // Sample the plane average results, adjust number of samples according to vertical height
 Nsamp = Nsamp*(ymax-ymin);
@@ -228,7 +228,7 @@ for (int i=0; i<Nsamp; i++){
 
 // Save the data to text file
 {
-    ofstream resfile("2D_bound_cond_L.txt");
+    ofstream resfile("2D_bound_cond_L_distri.txt");
     resfile << "# interface coord = " << intfShft << endl;
     resfile << "# y, <u>_y, <v>_y, <p>_y, <p>^i_y " << endl;
     for (int i=0; i<Nsamp; i++) resfile << PlaneUavg(0,i) << " " << PlaneUavg(1,i) << " " << PlaneUavg(2,i) << " " << PlaneUavg(3,i) << " " << PlaneUavg(4,i) << endl;

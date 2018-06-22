@@ -1,0 +1,7 @@
+This folder contains microscale problems that are to be solved to determine
+all the constitutive coefficients appearing in our model (section 5 of our paper)
+
+The folders contain these programs
+
+Lproblem -- used to compute coefficients L_{xx}, B, and M_{xz}
+Kproblem -- used to compute K_{ij} and A_i

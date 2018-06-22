@@ -1,0 +1,14 @@
+This folder contains the code to solve the microscale problem that is solved
+to compute constitutive coefficients for effective description of rough wall flows (Lxx and Mzz).
+The parameters used in the existing code will solve coefficients for interface
+locaiton yi=0.2l as shown in figure 6(a). This will yield parameters used in 
+the results described in figures 6(c) and 6(d).
+In order to compute coefficients at yi=0.5l, as used in figure 7, the parameter
+in the code 'intfShft' should be set to 0.5.
+
+Execute the program by using the following command
+          Freefem++ L-M-solver.edp
+
+This produces the following outputs
+2D_bound_cond_L_M_intf.txt -- contains coefficients Lxx and Mzz at the interface that are to be used in the effective program.
+2D_bound_cond_L_distri.txt -- Distribution of line averaged solution field Lxx across interface normal direction.

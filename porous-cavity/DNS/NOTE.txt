@@ -1,0 +1,13 @@
+Geometry-resolved direct numerical simulations (DNS) of 
+lid driven cavity with a porous bed.
+This example considers a two-layer porous medium structure
+
+This folder contains two programs
+1. 2DfluidNStokes_solver.edp -- Solves Navier-Stokes equations and obtain
+                                field variables
+
+2. 2DfluidNStokes_post.edp -- Reads output files generated from the first program
+                              and generates 1D output files: dns_x0.txt & dns_y1.txt
+
+The geometry of the solid inclusions, and the associated mesh are contained in
+2DfluidNStokes_solver.brddef and 2DfluidNStokes_solver.brdmsh.

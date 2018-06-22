@@ -1,0 +1,8 @@
+This folder contains all source codes to simulate lid driven cavity with rough bottom.
+Explanations of the folders are as follows:
+
+DNS -- contains geometry resolved simulations.
+microscale -- Codes to solve microscale problems to compute constitutive coefficients
+effective -- Source code for effective simulation of rough cavity
+
+Using these source codes all results in section 4.1 of the paper can be reproduced

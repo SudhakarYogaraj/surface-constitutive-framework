@@ -1,0 +1,11 @@
+This folder contains the code for effective simulation of
+lid driven cavity with a porous bed.
+
+Run the program with following command
+
+Freefem++ 2D_MSE_solver_Nitche.edp
+
+This produces the following output files
+dns_x0.txt -- variation of flow quantities along the interface
+dns_y1.txt -- results along a vertical line YY given in section 4.3.
+              This is to plot boundary layer profile

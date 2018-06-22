@@ -1,0 +1,15 @@
+This folder contains source codes to simulate lid driven cavity with a porous bed.
+The geometry considered here is the two layer porous media problem explained in the paper. 
+Both isotropic and anisotropic geometries can be simulated simply by changing the geometry.
+Explanations of the folders are as follows:
+
+DNS -- contains geometry resolved simulations.
+microscale -- Codes to solve microscale problems to compute constitutive coefficients
+    |
+    |--> L problem -- computation of coefficients L, B, and M
+    |
+    |--> K problem -- computation of coefficients B and A
+    |
+effective -- Source code for effective simulation of porous cavity
+
+Using these source codes all results in section 4.3 of the paper can be reproduced

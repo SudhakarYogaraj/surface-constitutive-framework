@@ -1,0 +1,124 @@
+// verbosity=0;
+
+load "UMFPACK64"
+load "iovtk"
+
+// Mesh resolution and convergence
+int n=5;
+int nB=3;
+
+// Define case
+string caseFix = "svf5_eps0.100";
+
+// Definition of variables
+real epsP;
+real pgrad;
+real thetas;
+
+// Number of samples per unit of length
+int NsampU = 60;
+int Nsamp;
+
+// Number of intervals in trapezoidal integration
+int ntrep=10;
+
+//interface location
+real yif=0.0;
+
+// Read results
+mesh Th=readmesh("2DfluidNStokes_results_"+caseFix+".msh");
+fespace UUPh(Th,[P2,P2,P1]);
+UUPh [u,v,p];
+{
+    ifstream resfile("2DfluidNStokes_results_"+caseFix+".dat",binary);
+    resfile>>u[];
+    resfile>>v[];
+    resfile>>p[];
+    ifstream resfile2("2DfluidNStokes_results_"+caseFix+".txt");
+    resfile2>>epsP;
+    resfile2>>pgrad;
+    resfile2>>thetas;
+}
+cout << "epsP = " << epsP << ", pgrad = " << pgrad << ", thetas = " << thetas << endl;
+fespace Uh(Th,P2);
+Uh dxu, dxv, dyu, dyv;
+
+// Recalculate some variables
+real cylr   = sqrt(thetas/pi);
+real ymax =               1.0/epsP;
+//real ymin =  0.5 - cylr - 0.5/epsP;
+real ymin =  -5.0;
+real xmin = -0.5/epsP;
+real xmax =  0.5/epsP;
+
+// plot(Th,ps="2DfluidNStokes_results_"+caseFix+"_mesh.eps");
+plot(Th);
+
+// Rescale the number of samples, output 3 different slices
+Nsamp = NsampU*(ymax-ymin);
+// Output vertical line probes
+real xsmp1 = -1.0;
+real ycur;
+{
+ofstream resfile1("dns_y1.txt");
+resfile1 << "# xmin = " << xmin << ", xmax = " << xmax << endl;
+resfile1 << "# y, u, v, p, dp/dx, dp/dy  line probe at x = " << xsmp1 << endl;
+real uav, vav, pav, lav, xtrp,tmul;
+real dtrp=1.0/ntrep;
+for(int i=0; i<Nsamp; i++)
+{
+    ycur = ymin+1e-6 + i*(ymax-ymin-2e-6)/(Nsamp-1.00);
+
+    if(y<=yif)
+    {
+      uav=0.0;
+      vav=0.0;
+      pav=0.0;
+      lav=0.0;
+      for(int trp=0; trp<=ntrep; trp++)
+      {
+         xtrp=xsmp1-0.5+trp*dtrp;
+         if(trp==0 || trp==ntrep) tmul=dtrp*0.5;
+         else tmul=dtrp;
+         uav=uav+u(xtrp,ycur)*tmul;
+         vav=vav+v(xtrp,ycur)*tmul;
+         pav=pav+p(xtrp,ycur)*tmul;
+      }
+
+    }
+    else
+    {
+      uav=u(xsmp1,ycur);
+      vav=v(xsmp1,ycur);
+      pav=p(xsmp1,ycur);
+    }
+    resfile1 << ycur << " " << uav << " " << vav << " "<< pav << endl;
+}
+}
+
+cout << " y-averaging done " <<endl;
+
+// Rescale the number of samples, output 3 different slices
+Nsamp = NsampU*(xmax-xmin);
+// Output line probe at the interface locations (horizontal line probes)
+real ysmp0 = 0.0;
+real xcur;
+{
+ofstream resfile0("dns_x0.txt");
+resfile0 << "# ymin = " << ymin << ", ymax = " << ymax << endl;
+resfile0 << "# x, u, v, p,  line probe at y = " << ysmp0 << endl;
+real uav, vav, pav, lav, ytrp,tmul;
+real dtrp=1.0/ntrep;
+for(int i=0; i<Nsamp; i++)
+{
+    xcur = xmin+1e-6 + i*(xmax-xmin-2e-6)/(Nsamp-1.00);
+
+
+    uav=u(xcur,ysmp0);
+    vav=v(xcur,ysmp0);
+    pav=p(xcur,ysmp0);
+    resfile0 << xcur << " " << uav << " " << vav << " "<< pav << " " << endl;
+}
+}
+
+savevtk("solution_DNS.vtk",Th,[u,v],p);
